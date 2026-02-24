@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  mobileNumber  String    @unique
+  password      String
+  name          String?
+  role          Role      @default(USER)
+  isActive      Boolean   @default(true)
+  isVerified    Boolean   @default(false)
+  
+  // Referral system
+  referralCode  String    @unique
+  referredBy    String?   // User ID who referred this user
+  referrer      User?     @relation("UserReferrals", fields: [referredBy], references: [id])
+  referrals     User[]    @relation("UserReferrals")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  wallet        Wallet?
+  bets          Bet[]
+  transactions  Transaction[]
+  deposits      Deposit[]
+  withdrawals   Withdrawal[]
+  bankDetails   BankDetails?
+  otps          OTP[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  balance   Decimal  @default(0) @db.Decimal(15, 2)
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+model BankDetails {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  accountHolder String
+  accountNumber String
+  ifscCode      String
+  bankName      String
+  branchName    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bank_details")
+}
+
+model OTP {
+  id          String    @id @default(uuid())
+  mobileNumber String
+  otp         String
+  purpose     OtpPurpose // REGISTRATION, FORGOT_PASSWORD, etc.
+  expiresAt   DateTime
+  verified    Boolean   @default(false)
+  
+  // Temporary data storage for registration
+  tempData    Json?     // Stores password, invitationCode during registration
+  
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  user        User?     @relation(fields: [userId], references: [id])
+  userId      String?
+
+  @@index([mobileNumber, purpose])
+  @@map("otps")
+}
+
+model GameRound {
+  id                String          @id @default(uuid())
+  period            String          @unique
+  number            Int?            // 0-9 winning number
+  winningColor      String?         // GREEN, RED, VIOLET
+  winningSize       String?         // BIG, SMALL
+  
+  // Round status for betting control
+  status            RoundStatus     @default(OPEN)
+  
+  // Result declaration metadata
+  resultDeclaredBy  ResultDeclaredBy?  // ADMIN or SYSTEM
+  resultStatus      ResultStatus    @default(PENDING)
+  declaredAt        DateTime?
+  declaredByAdminId String?         // Which admin declared the result
+  
+  // Profit tracking fields
+  totalCollection   Decimal?        @db.Decimal(15, 2)  // Sum of all bets
+  totalPayout       Decimal?        @db.Decimal(15, 2)  // Sum of all winnings paid
+  profit            Decimal?        @db.Decimal(15, 2)  // totalCollection - totalPayout
+  profitPercent     Float?          // (profit / totalCollection) * 100
+  
+  // Result calculation metadata
+  calculationData   Json?           // Store all possible results with profits
+  selectedResultRank String?        // HIGH_PROFIT, MEDIUM_PROFIT, RANDOM
+  
+  // Safety check flags
+  isProfitable      Boolean         @default(false)  // Whether result meets minimum profit
+  lossAmount        Decimal?        @db.Decimal(15, 2)  // If negative profit
+  
+  // Timestamps
+  startTime         DateTime        @default(now())
+  endTime           DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  bets              Bet[]
+
+  @@map("game_rounds")
+}
+
+model Bet {
+  id            String      @id @default(uuid())
+  userId        String
+  gameRoundId   String
+  betType       BetType     // COLOR, NUMBER, SIZE
+  selection     String      // GREEN/RED/VIOLET or 0-9 or BIG/SMALL
+  amount        Decimal     @db.Decimal(15, 2)
+  potentialWin  Decimal     @db.Decimal(15, 2)
+  result        BetResult   @default(PENDING)
+  winAmount     Decimal?    @db.Decimal(15, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameRound     GameRound   @relation(fields: [gameRoundId], references: [id], onDelete: Cascade)
+
+  @@map("bets")
+}
+
+model Transaction {
+  id              String          @id @default(uuid())
+  userId          String
+  type            TransactionType
+  amount          Decimal         @db.Decimal(15, 2)
+  status          TransactionStatus @default(PENDING)
+  description     String?
+  referenceId     String?         // Reference to deposit or withdrawal
+  metadata        Json?           // Additional data like referral info
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model Deposit {
+  id              String          @id @default(uuid())
+  userId          String
+  amount          Decimal         @db.Decimal(15, 2)
+  upiId           String          // Admin's UPI ID used for deposit
+  transactionId   String          // User provided transaction ID
+  status          DepositStatus   @default(PENDING)
+  remarks         String?
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  referralBonusProcessed Boolean @default(false) // Track if referral bonus was given
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("deposits")
+}
+
+model Withdrawal {
+  id              String          @id @default(uuid())
+  userId          String
+  amount          Decimal         @db.Decimal(15, 2)
+  status          WithdrawalStatus @default(PENDING)
+  bankDetails     Json            // Snapshot of bank details at time of withdrawal
+  remarks         String?
+  processedBy     String?
+  processedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawals")
+}
+
+model Admin {
+  id            String    @id @default(uuid())
+  mobileNumber  String    @unique
+  password      String
+  name          String?
+  role          AdminRole @default(ADMIN)
+  isActive      Boolean   @default(true)
+  isVerified    Boolean   @default(false)
+  upiId         String?   // Admin's UPI ID for deposits
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+model Setting {
+  id            String    @id @default(uuid())
+  key           String    @unique
+  value         String
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("settings")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  FORGOT_PASSWORD
+  LOGIN
+}
+
+enum RoundStatus {
+  OPEN        // Betting is open
+  PAUSED      // Betting temporarily paused
+  CLOSED      // Betting closed, waiting for result
+  CANCELLED   // Round cancelled, refunds issued
+  RESULT_DECLARED  // Result declared, winnings calculated
+}
+
+enum ResultStatus {
+  PENDING     // Result not yet declared
+  DECLARED    // Result has been declared
+}
+
+enum ResultDeclaredBy {
+  ADMIN       // Result declared by admin
+  SYSTEM      // Result calculated by system
+}
+
+enum BetType {
+  COLOR
+  NUMBER
+  SIZE
+}
+
+enum BetResult {
+  PENDING
+  WON
+  LOST
+  CANCELLED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BET_PLACED
+  BET_WON
+  REFERRAL_BONUS
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+}
