@@ -41,26 +41,19 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: env.RATE_LIMIT_WINDOW_MS,
-  max: env.RATE_LIMIT_MAX_REQUESTS,
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again later.',
-  },
-});
-app.use(limiter);
+// Rate limiting - DISABLED for development
+// const limiter = rateLimit({
+//   windowMs: env.RATE_LIMIT_WINDOW_MS,
+//   max: env.RATE_LIMIT_MAX_REQUESTS,
+//   message: {
+//     success: false,
+//     message: 'Too many requests from this IP, please try again later.',
+//   },
+// });
+// app.use(limiter);
 
-// Stricter rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 attempts (increased for development)
-  message: {
-    success: false,
-    message: 'Too many authentication attempts, please try again later.',
-  },
-});
+// Stricter rate limiting for auth endpoints - DISABLED for development
+const authLimiter = (req, res, next) => next(); // Bypass rate limit
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
