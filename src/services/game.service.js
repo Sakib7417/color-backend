@@ -120,6 +120,8 @@ class GameService {
     const period = await this.generatePeriodNumber(now);
 
     const gameRound = await prisma.gameRound.upsert({
+      where: { period },
+      update: {},
       data: {
         period,
         status: 'OPEN',
