@@ -117,7 +117,7 @@ class GameService {
    */
   async createNewGameRound() {
     const now = new Date();
-    const period = this.generatePeriodNumber(now);
+    const period = await this.generatePeriodNumber(now);
 
     const gameRound = await prisma.gameRound.create({
       data: {
@@ -297,13 +297,36 @@ class GameService {
 
   /**
    * Generate period number based on current time
+   * Format: YYYYMMDD + sequential number (0001, 0002, etc.)
    */
-  generatePeriodNumber(date) {
+  async generatePeriodNumber(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const random = String(Math.floor(Math.random() * 9000) + 1000);
-    return `${year}${month}${day}${random}`;
+    const datePrefix = `${year}${month}${day}`;
+
+    // Find the last round of today
+    const lastRound = await prisma.gameRound.findFirst({
+      where: {
+        period: {
+          startsWith: datePrefix,
+        },
+      },
+      orderBy: {
+        period: 'desc',
+      },
+    });
+
+    let sequence = 1;
+    if (lastRound) {
+      // Extract sequence from last period (last 4 digits)
+      const lastSequence = parseInt(lastRound.period.slice(-4));
+      sequence = lastSequence + 1;
+    }
+
+    // Format sequence as 4 digits (0001, 0002, etc.)
+    const sequenceStr = String(sequence).padStart(4, '0');
+    return `${datePrefix}${sequenceStr}`;
   }
 }
 

@@ -106,6 +106,9 @@ class GameAdminService {
 
     logger.info(`Admin ${adminId} declared result for round ${gameRoundId}: ${winningOption} (Profit: ${selectedResult?.profit || 0})`);
 
+    // Cleanup old game rounds - keep only latest 500
+    await this.cleanupOldRounds();
+
     return {
       message: 'Result declared successfully',
       round: updatedRound,
@@ -115,6 +118,55 @@ class GameAdminService {
       profit: selectedResult?.profit || 0,
       profitPercent: selectedResult?.profitPercent || 0,
     };
+  }
+
+  /**
+   * Cleanup old game rounds - keep only latest 500 completed rounds
+   */
+  async cleanupOldRounds() {
+    try {
+      // Count completed rounds
+      const roundCount = await prisma.gameRound.count({
+        where: { resultStatus: 'DECLARED' },
+      });
+
+      // If more than 500, delete oldest ones
+      if (roundCount > 500) {
+        const roundsToDelete = roundCount - 500;
+
+        // Find oldest completed rounds to delete
+        const oldRounds = await prisma.gameRound.findMany({
+          where: { resultStatus: 'DECLARED' },
+          orderBy: { declaredAt: 'asc' },
+          take: roundsToDelete,
+          select: { id: true },
+        });
+
+        const roundIds = oldRounds.map(r => r.id);
+
+        // Delete related bets first (foreign key constraint)
+        await prisma.bet.deleteMany({
+          where: {
+            gameRoundId: {
+              in: roundIds,
+            },
+          },
+        });
+
+        // Delete old rounds
+        await prisma.gameRound.deleteMany({
+          where: {
+            id: {
+              in: roundIds,
+            },
+          },
+        });
+
+        logger.info(`Cleaned up ${roundsToDelete} old game rounds`);
+      }
+    } catch (err) {
+      logger.error('Error cleaning up old rounds:', err);
+    }
   }
 
   /**
