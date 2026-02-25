@@ -119,10 +119,17 @@ class GameService {
     const now = new Date();
     const period = await this.generatePeriodNumber(now);
 
-    const gameRound = await prisma.gameRound.upsert({
+    // Check if round already exists
+    const existingRound = await prisma.gameRound.findUnique({
       where: { period },
-      update: {},
-      create: {
+    });
+
+    if (existingRound) {
+      return existingRound;
+    }
+
+    const gameRound = await prisma.gameRound.create({
+      data: {
         period,
         status: 'OPEN',
         resultStatus: 'PENDING',
