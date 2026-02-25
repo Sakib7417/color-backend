@@ -122,7 +122,7 @@ class GameService {
     const gameRound = await prisma.gameRound.upsert({
       where: { period },
       update: {},
-      data: {
+      create: {
         period,
         status: 'OPEN',
         resultStatus: 'PENDING',
