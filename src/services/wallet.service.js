@@ -56,10 +56,14 @@ class WalletService {
   async createDeposit(userId, amount, transactionId) {
     const depositAmount = parseFloat(amount);
 
-    // Get admin's UPI ID
+    // Get admin's UPI ID (first active admin with UPI ID set)
     const admin = await prisma.admin.findFirst({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        upiId: { not: null }
+      },
       select: { upiId: true },
+      orderBy: { createdAt: 'asc' }
     });
 
     if (!admin || !admin.upiId) {
