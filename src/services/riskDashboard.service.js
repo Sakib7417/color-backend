@@ -127,8 +127,13 @@ class RiskDashboardService {
         if (bet.betType === 'COLOR') {
           if (bet.selection === color) {
             isWin = true;
-            const multiplier = color === 'VIOLET' ? PAYOUTS.COLOR.VIOLET : PAYOUTS.COLOR[color];
-            winAmount = parseFloat(bet.amount) * multiplier;
+            // Special case: if winning number is 0 or 5 (dual-color), use reduced payout for GREEN/RED
+            if ((number === 0 && bet.selection === 'GREEN') || (number === 5 && bet.selection === 'RED')) {
+              winAmount = parseFloat(bet.amount) * 1.45; // 45% return
+            } else {
+              const multiplier = color === 'VIOLET' ? PAYOUTS.COLOR.VIOLET : PAYOUTS.COLOR[color];
+              winAmount = parseFloat(bet.amount) * multiplier;
+            }
             colorPayout += winAmount;
           } else if (bet.selection === 'VIOLET' && (number === 0 || number === 5)) {
             isWin = true;
@@ -175,6 +180,15 @@ class RiskDashboardService {
         riskLevel = 'SAFE_PROFIT';
       }
 
+      // Check if this is a dual-color number
+      const isDualColor = (number === 0 || number === 5);
+      const dualColorInfo = isDualColor ? {
+        number,
+        dualColors: number === 0 ? ['GREEN', 'VIOLET'] : ['RED', 'VIOLET'],
+        specialPayoutRule: true,
+        affectedColors: number === 0 ? ['GREEN'] : ['RED'],
+      } : null;
+
       results.push({
         number,
         color,
@@ -187,6 +201,8 @@ class RiskDashboardService {
         profit,
         profitPercent,
         riskLevel,
+        isDualColor,
+        dualColorInfo,
         winningBetsCount: winningBets.length,
         winningBets,
       });

@@ -377,7 +377,12 @@ class GameAdminService {
           winAmount = parseFloat(bet.amount) * PAYOUTS.COLOR.VIOLET;
         } else if (betColor === winningColor) {
           isWin = true;
-          winAmount = parseFloat(bet.amount) * PAYOUTS.COLOR[winningColor];
+          // Special case: if winning number is 0 or 5 (dual-color), use reduced payout for GREEN/RED
+          if ((winningNumber === 0 && betColor === 'GREEN') || (winningNumber === 5 && betColor === 'RED')) {
+            winAmount = parseFloat(bet.amount) * 1.45; // 45% return
+          } else {
+            winAmount = parseFloat(bet.amount) * PAYOUTS.COLOR[winningColor];
+          }
         }
       } else if (bet.betType === 'SIZE') {
         const betSize = bet.selection;
