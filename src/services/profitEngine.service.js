@@ -10,7 +10,7 @@ class ProfitEngineService {
   constructor() {
     // Configurable safety limits (can be moved to database settings)
     this.MIN_PROFIT_PERCENT = parseFloat(env.MIN_PROFIT_PERCENT || 5); // Minimum 5% profit
-    this.MAX_LOSS_PER_ROUND = parseFloat(env.MAX_LOSS_PER_ROUND || 0); // 0 = no loss allowed
+    this.MAX_LOSS_PER_ROUND = parseFloat(env.MAX_LOSS_PER_ROUND || 1000); // 0 = no loss allowed
     this.HIGH_PROFIT_WEIGHT = 0.70; // 70% chance
     this.MEDIUM_PROFIT_WEIGHT = 0.20; // 20% chance
     this.RANDOM_WEIGHT = 0.10; // 10% chance
