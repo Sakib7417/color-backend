@@ -266,6 +266,33 @@ class WalletService {
 
     return bankDetails;
   }
+
+  /**
+   * Get admin UPI ID for deposit
+   */
+  async getAdminUpiId() {
+    // Get admin's UPI ID (first active admin with UPI ID set)
+    const admin = await prisma.admin.findFirst({
+      where: { 
+        isActive: true,
+        upiId: { not: null }
+      },
+      select: { 
+        upiId: true,
+        name: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (!admin || !admin.upiId) {
+      throw new Error('Deposit service temporarily unavailable. Please contact support.');
+    }
+
+    return {
+      upiId: admin.upiId,
+      adminName: admin.name || 'Admin'
+    };
+  }
 }
 
 module.exports = new WalletService();

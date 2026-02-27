@@ -60,4 +60,11 @@ router.post('/bank-details', authenticate, validateBankDetails, walletController
  */
 router.get('/bank-details', authenticate, walletController.getBankDetails);
 
+/**
+ * @route   GET /api/wallet/deposit-upi
+ * @desc    Get admin UPI ID for deposit
+ * @access  Private
+ */
+router.get('/deposit-upi', authenticate, walletController.getDepositUpiId);
+
 module.exports = router;

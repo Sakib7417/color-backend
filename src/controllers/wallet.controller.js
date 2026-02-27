@@ -112,6 +112,18 @@ class WalletController {
       return error(res, err.message, 404);
     }
   }
+
+  /**
+   * Get admin UPI ID for deposit
+   */
+  async getDepositUpiId(req, res) {
+    try {
+      const upiInfo = await walletService.getAdminUpiId();
+      return success(res, upiInfo, 'UPI ID for deposit retrieved successfully');
+    } catch (err) {
+      return error(res, err.message, 500);
+    }
+  }
 }
 
 module.exports = new WalletController();

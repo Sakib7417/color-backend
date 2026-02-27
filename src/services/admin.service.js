@@ -8,6 +8,32 @@ const referralService = require('./referral.service');
  */
 class AdminService {
   /**
+   * Get admin profile
+   */
+  async getAdminProfile(adminId) {
+    const admin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        mobileNumber: true,
+        name: true,
+        role: true,
+        isActive: true,
+        isVerified: true,
+        lastLoginAt: true,
+        createdAt: true,
+        upiId: true,
+      },
+    });
+
+    if (!admin) {
+      throw new Error('Admin not found');
+    }
+
+    return admin;
+  }
+
+  /**
    * Get dashboard stats
    */
   async getDashboardStats() {
