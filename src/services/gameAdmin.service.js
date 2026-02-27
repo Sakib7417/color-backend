@@ -378,7 +378,7 @@ class GameAdminService {
         } else if (betColor === winningColor) {
           isWin = true;
           // Special case: if winning number is 0 or 5 (dual-color), use reduced payout for GREEN/RED
-          if ((winningNumber === 0 && betColor === 'GREEN') || (winningNumber === 5 && betColor === 'RED')) {
+          if ((winningNumber === 0 && betColor === 'RED') || (winningNumber === 5 && betColor === 'GREEN')) {
             winAmount = parseFloat(bet.amount) * 1.45; // 45% return
           } else {
             winAmount = parseFloat(bet.amount) * PAYOUTS.COLOR[winningColor];
